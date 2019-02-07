@@ -259,7 +259,7 @@ public class Annotation {
 //			for(int m=0; m<3; m++) {
 //				Rhombus rhombus = faceRhombusArray[n][m];
 //				if(rhombus != null)
-//					Core.circle(img, rhombus.center, 5, Constants.ColorBlue, 3);
+					Core.circle(img, rhombus.center, 5, Constants.ColorBlue, 3);
 //			}
 //		}
 //

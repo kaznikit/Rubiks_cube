@@ -60,6 +60,7 @@ public class MainActivity extends Activity implements CvCameraViewListener2 {
                 {
                     Log.i(TAG, "OpenCV loaded successfully");
                     mOpenCvCameraView.enableView();
+                    imageRecognizer = new ImageRecognizer();
                 } break;
                 default:
                 {
@@ -71,8 +72,6 @@ public class MainActivity extends Activity implements CvCameraViewListener2 {
 
     public MainActivity() {
         Log.i(TAG, "Instantiated new " + this.getClass());
-        imageRecognizer = new ImageRecognizer();
-
     }
 
     /** Called when the activity is first created. */
