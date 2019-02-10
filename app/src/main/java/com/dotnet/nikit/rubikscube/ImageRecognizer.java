@@ -1,5 +1,9 @@
 package com.dotnet.nikit.rubikscube;
 
+import android.util.Log;
+
+import com.dotnet.nikit.rubikscube.Graphics.ARDrawing;
+
 import org.opencv.android.CameraBridgeViewBase;
 import org.opencv.core.CvType;
 import org.opencv.core.Mat;
@@ -11,17 +15,16 @@ import org.opencv.imgproc.Imgproc;
 
 import java.util.LinkedList;
 import java.util.List;
+import java.util.logging.Logger;
 
-import ar.Annotation;
-import ar.ColorRecognition;
-import ar.Constants;
-import ar.MenuAndParams;
-import ar.Profiler;
-import ar.Rhombus;
-import ar.RubikFace;
-
+/*
+** class for recognizing rubik faces and color of tiles
+** algorithm consist of few steps:
+** determine boundaries of the face and tiles, using gray, blur and canny filter
+** then dilate boundaries and after that we can get coordinates of each tile
+** find the center of tile and get it's color
+* */
 public class ImageRecognizer {
-
     Mat grayscale_image;
     Mat blur_image;
     Mat canny_image;
@@ -31,6 +34,7 @@ public class ImageRecognizer {
     List<MatOfPoint> contours;
     List<Rectangle> polygonList;
     List<Rectangle> rectangleList;
+    ARDrawing dr;
 
     public ImageRecognizer(){
         grayscale_image = new Mat();
@@ -40,12 +44,13 @@ public class ImageRecognizer {
         contours = new LinkedList<MatOfPoint>();
         polygonList = new LinkedList<Rectangle>();
         rectangleList = new LinkedList<Rectangle>();
+        dr = new ARDrawing();
     }
 
-    public Mat processFrame(Mat rgbaImage){
+    public Mat processFrame(Mat rgbaImage) {
 
+        RubikFace rubikFace = new RubikFace();
         /* **********************************************************************
-         * **********************************************************************
          * Process to Grey Scale
          *
          * This algorithm finds highlights areas that are all of nearly
@@ -54,42 +59,26 @@ public class ImageRecognizer {
         Imgproc.cvtColor(rgbaImage, grayscale_image, Imgproc.COLOR_BGR2GRAY);
 
         /* **********************************************************************
-         * **********************************************************************
          * Gaussian Filter Blur prevents getting a lot of false hits
          */
 
         int kernelSize = 7;
         kernelSize = kernelSize % 2 == 0 ? kernelSize + 1 : kernelSize;  // make odd
-        Imgproc.GaussianBlur(
-                grayscale_image,
-                blur_image,
-                new Size(kernelSize, kernelSize), -1, -1);
+        Imgproc.GaussianBlur(grayscale_image, blur_image, new Size(kernelSize, kernelSize), -1, -1);
         grayscale_image.release();
 
-
         /* **********************************************************************
-         * **********************************************************************
          * Canny Edge Detection
          */
-        Imgproc.Canny(
-                blur_image,
-                canny_image,
-                50,
-                100,
+        Imgproc.Canny(blur_image, canny_image, 50, 100,
                 3,         // Sobel Aperture size.  This seems to be typically value used in the literature: i.e., a 3x3 Sobel Matrix.
                 false);    // use cheap gradient calculation: norm =|dI/dx|+|dI/dy|
         blur_image.release();
 
         /* **********************************************************************
-         * **********************************************************************
          * Dilation Image Process
          */
-        Imgproc.dilate(
-                canny_image,
-                dilate_image,
-                Imgproc.getStructuringElement(
-                        Imgproc.MORPH_RECT,
-                        new Size(10,10)));
+        Imgproc.dilate(canny_image, dilate_image, Imgproc.getStructuringElement(Imgproc.MORPH_RECT, new Size(10, 10)));
         canny_image.release();
 
         /* **********************************************************************
@@ -98,40 +87,32 @@ public class ImageRecognizer {
          */
 
         Mat heirarchy = new Mat();
-        Imgproc.findContours(
-                dilate_image,
-                contours,
-                heirarchy,
+        Imgproc.findContours(dilate_image, contours, heirarchy,
                 Imgproc.RETR_LIST,
                 Imgproc.CHAIN_APPROX_SIMPLE); // Note: tried other TC89 options, but no significant change or improvement on cpu time.
         dilate_image.release();
+        heirarchy.release();
 
         // Create gray scale image but in RGB format, and then added yellow colored contours on top.
         gray_image = new Mat(rgbaImage.size(), CvType.CV_8UC4);
         rgba_gray_image = new Mat(rgbaImage.size(), CvType.CV_8UC4);
-        Imgproc.cvtColor( rgbaImage, gray_image, Imgproc.COLOR_RGB2GRAY);
+        Imgproc.cvtColor(rgbaImage, gray_image, Imgproc.COLOR_RGB2GRAY);
         Imgproc.cvtColor(gray_image, rgba_gray_image, Imgproc.COLOR_GRAY2BGRA, 3);
         Imgproc.drawContours(rgba_gray_image, contours, -1, Constants.ColorTileEnum.YELLOW.cvColor, 3);
         gray_image.release();
-        contours.clear();
-        //      Core.pu(rgba_gray_image, "Num Contours: " + contours.size(),  new Point(500, 50), Constants.FontFace, 4, Constants.TileColorEnum.RED.cvColor, 4);
-        //  gray_image.release();
-
-
 
         /*//* **********************************************************************
-         * **********************************************************************
          * Polygon Detection
          */
-        for(MatOfPoint contour : contours) {
+        for (MatOfPoint contour : contours) {
 
             // Keep only counter clockwise contours.  A clockwise contour is reported as a negative number.
             double contourArea = Imgproc.contourArea(contour, true);
-            if(contourArea < 0.0)
+            if (contourArea < 0.0)
                 continue;
 
             // Keep only reasonable area contours
-            if(contourArea < 100)
+            if (contourArea < 100)
                 continue;
 
             // Floating, instead of Double, for some reason required for approximate polygon detection algorithm.
@@ -153,51 +134,36 @@ public class ImageRecognizer {
         }
 
 
-        // Create gray scale image but in RGB format, and then add yellow colored polygons on top.
-        //    stateModel.activeRubikFace = rubikFace;
-        //    rubikFace.profiler.markTime(Profiler.Event.TOTAL);
-//        Mat gray_image1 = new Mat(rgbaImage.size(), CvType.CV_8UC4);
- //       Mat rgba_gray_image1 = new Mat(rgbaImage.size(), CvType.CV_8UC4);
- //       Imgproc.cvtColor(rgbaImage, gray_image1, Imgproc.COLOR_RGB2GRAY);
- //       Imgproc.cvtColor(gray_image1, rgba_gray_image1, Imgproc.COLOR_GRAY2BGRA, 4);
-        //for(Rhombus polygon : polygonList)
-        //   polygon.draw(rgba_gray_image, ColorTileEnum.YELLOW.cvColor);
-        //   Core.putText(rgba_gray_image, "Num Polygons: " + polygonList.size(),  new Point(500, 50), Constants.FontFace, 3, ColorTileEnum.RED.cvColor, 4);
-
-
         /* **********************************************************************
-         * **********************************************************************
          * Rhombus Tile Recognition
          *
          * From polygon list, produces a list of suitable Parallelograms (Rhombi).
          */
         // Get only valid Rhombus(es) : actually parallelograms.
-         for(Rectangle rhombus : polygonList) {
+        for (Rectangle rhombus : polygonList) {
             rhombus.qualify();
-           // if(rhombus.status == Rectangle.StatusEnum.VALID)
-                rectangleList.add(rhombus);
+            // if(rhombus.status == Rectangle.StatusEnum.VALID)
+            rectangleList.add(rhombus);
         }
+        Log.i("polygons count:", Integer.toString(polygonList.size()));
 
         // Filtering w.r.t. Rhmobus set characteristics
-        //     Rhombus.removedOutlierRhombi(rhombusList);
-
-        //   rubikFace.profiler.markTime(Profiler.Event.RHOMBUS);
-
-        // Create gray scale image but in RGB format, and then add yellow colored Rhombi (parallelograms) on top.
-        //     stateModel.activeRubikFace = rubikFace;
-        //    rubikFace.profiler.markTime(Profiler.Event.TOTAL);
-        Mat gray_image2 = new Mat(rgbaImage.size(), CvType.CV_8UC4);
-        Mat rgba_gray_image2 = new Mat(rgbaImage.size(), CvType.CV_8UC4);
-        Imgproc.cvtColor( rgbaImage, gray_image2, Imgproc.COLOR_RGB2GRAY);
-        Imgproc.cvtColor(gray_image2, rgba_gray_image2, Imgproc.COLOR_GRAY2BGRA, 4);
-        //for(Rhombus rhombus : rhombusList)
-        //    rhombus.draw(rgba_gray_image, ColorTileEnum.YELLOW.cvColor);
-        // Core.putText(rgba_gray_image, "Num Rhombus: " + rhombusList.size(),  new Point(500, 50), Constants.FontFace, 4, ColorTileEnum.RED.cvColor, 4);
-        gray_image2.release();
-// Filtering w.r.t. Rhmobus set characteristics
         Rectangle.removedOutlierRhombi(rectangleList);
 
-        rgba_gray_image.release();
-        return rgba_gray_image2;
+        /* **********************************************************************
+         * Face Recognition
+         *
+         * Takes a collection of Rhombus objects and determines if a valid
+         * Rubik Face can be determined from them, and then also determines
+         * initial color for all nine tiles.
+         */
+      //  rubikFace.processRhombuses(rectangleList, rgbaImage);
+
+        polygonList.clear();
+        rectangleList.clear();
+        //dr.drawFaceColorMetrics(rgba_gray_image, rubikFace);
+      //  rgba_gray_image.release();
+        //      rgba_gray_image.release();
+        return dr.drawAR(rgba_gray_image);
     }
 }

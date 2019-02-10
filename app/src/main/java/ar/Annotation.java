@@ -259,7 +259,7 @@ public class Annotation {
 //			for(int m=0; m<3; m++) {
 //				Rhombus rhombus = faceRhombusArray[n][m];
 //				if(rhombus != null)
-					Core.circle(img, rhombus.center, 5, Constants.ColorBlue, 3);
+					//Core.circle(img, rhombus.center, 5, Constants.ColorBlue, 3);
 //			}
 //		}
 //
@@ -416,7 +416,8 @@ public class Annotation {
         Core.putText(image, String.format("Gamma  = %4.2f", face.gammaRatio),                      new Point(50, 550), Constants.FontFace, 2, ColorTileEnum.WHITE.cvColor, 2);
         Core.putText(image, String.format("Sigma  = %5.0f", face.lmsResult.sigma),                 new Point(50, 600), Constants.FontFace, 2, ColorTileEnum.WHITE.cvColor, 2);
         Core.putText(image, String.format("Moves  = %d",    face.numRhombusMoves),                 new Point(50, 650), Constants.FontFace, 2, ColorTileEnum.WHITE.cvColor, 2);
-        Core.putText(image, String.format("#Rohmbi= %d",    face.rhombusList.size()),              new Point(50, 700), Constants.FontFace, 2, ColorTileEnum.WHITE.cvColor, 2);*/
+        Core.putText(image, String.format("#Rohmbi= %d",    face.rhombusList.size()),              new Point(50, 700), Constants.FontFace, 2, ColorTileEnum.WHITE.cvColor, 2);
+    */
     }
 
 
